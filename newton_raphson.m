@@ -1,7 +1,7 @@
 % Função que aplica o método de Newton-Raphson para a resolução do problema
 % do fluxo de potência
 
-function [stat, param] = newton_raphson(rede,param,inj)
+function [stat, param] = newton_raphson(rede,param,inj,estudo)
                            
 iter_max = 100; % Valor máximo de iterações
 stat.iter = 1; % Contador de iterações
@@ -68,7 +68,7 @@ end
 % Cálculo da matriz Jacobiano e correção das variáveis de estado
 %**************************************************************************
 % Função que retorna matriz Jacobiano
-[J] = jacobiano(param,inj,stat);
+[J] = jacobiano(param,inj,stat,estudo);
 
 X = J\Mism; % Vetor de correção
 dang = X(1:(param.nBarras - 1)); % Correção dos ângulos da tensão

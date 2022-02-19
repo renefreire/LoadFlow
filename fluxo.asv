@@ -5,17 +5,7 @@ function [flow, stat, param, rede, inj] = fluxo(rede,param,nome_arquivo,estudo)
 
 disp(' ');
 disp('Análise do Fluxo de Potência');
-
-switch estudo
-    case 1
-        disp('Método de Newton-Raphson');
-    case 2
-        disp('Método Desacoplado');
-    case 3
-        disp('Método Desacoplado Rápido');
-    otherwise
-        error('Escolha inválida');
-end
+disp('Método iterativo de Newton-Raphson');
 
 % Tipos de barra
 % 1 - PQ
@@ -62,7 +52,7 @@ for m = 1:param.nBarras
 end
 
 % Execução do método de Newton-Raphson
-[stat, param] = newton_raphson(rede,param,inj,estudo);
+[stat, param] = newton_raphson(rede,param,inj);
 
 % Cálculo do Fluxo de Potência
 [flow, inj] = fluxo_potencia(param,stat,inj);

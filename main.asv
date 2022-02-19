@@ -67,16 +67,25 @@ disp(' ');
 disp('1 - Newton-Raphson');
 disp('2 - NR Desacoplado');
 disp('3 - NR Desacoplado Rápido');
-disp('4 - Linearizado');
+disp('4 - Fluxo de Potência DC');
 disp(' ');
 estudo = input('Estudo escolhido -> ');
 if (estudo == 1 || estudo == 2 || estudo == 3)
     % Fluxo de Potência AC
     [flow, stat, param, inj] = fluxo(rede,param,nome_arquivo,estudo);
-elseif (estudo == 4)
-    % Fluxo de Potência DC
-    [stat, flow, inj] = fluxoDC(rede,param);
-else
-    % Mensagem de erro
-    error('Escolha inválida');
+else if (estudo == 4)
+        
+end
+switch estudo
+    case 1
+        
+    case 2
+        % Análise de Contingências
+        [cont, viol] = contingencias(rede,param,nome_arquivo);
+    case 3
+        % Fluxo de Potência Ótimo
+        FPORS(rede,param,nome_arquivo);
+    otherwise
+        % Mensagem de erro
+        error('Escolha inválida. Tente novamente');
 end

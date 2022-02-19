@@ -1,3 +1,6 @@
+% Função que gerencia as operações matemáticas para a resolução do fluxo de
+% potência linearizado
+
 function [stat, flow, inj] = fluxoDC(rede,param)
 
 tic; % Início da contagem de tempo

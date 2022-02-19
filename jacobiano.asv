@@ -63,18 +63,18 @@ Mi = numel(pq);
 Mj = numel(pq_pv);
 M = zeros(Mi,Mj);
 if (estudo > 1)
-    for i = 1:Mi
-        k = pq(i);
-        for j = 1:Mj
-            m = pq_pv(j);
-            if k == m % Mkk = dQk/dThk
-                for m = 1:param.nBarras
-                    M(i,j) = M(i,j) + Vbarra(k)*Vbarra(m)*(G(k,m)*cos(ang(k)-ang(m)) + B(k,m)*sin(ang(k)-ang(m)));
-                end
-                M(i,j) = M(i,j) - (Vbarra(k)^2)*G(k,k);
-            else % Mkm = dQk/dThm
-                M(i,j) = - Vbarra(k)*Vbarra(m)*(G(k,m)*cos(ang(k)-ang(m)) + B(k,m)*sin(ang(k)-ang(m)));
+end
+for i = 1:Mi
+    k = pq(i);
+    for j = 1:Mj
+        m = pq_pv(j);
+        if k == m % Mkk = dQk/dThk
+            for m = 1:param.nBarras
+                M(i,j) = M(i,j) + Vbarra(k)*Vbarra(m)*(G(k,m)*cos(ang(k)-ang(m)) + B(k,m)*sin(ang(k)-ang(m)));
             end
+            M(i,j) = M(i,j) - (Vbarra(k)^2)*G(k,k);
+        else % Mkm = dQk/dThm
+            M(i,j) = - Vbarra(k)*Vbarra(m)*(G(k,m)*cos(ang(k)-ang(m)) + B(k,m)*sin(ang(k)-ang(m)));
         end
     end
 end
