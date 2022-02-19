@@ -1,0 +1,497 @@
+#!/usr/bin/perl -w
+# converte arquivo de dados CEPEL para o formato padrão MATLAB
+
+use strict;
+
+# -----------------------------------------------------------------------
+# Declaração de variáveis
+# -----------------------------------------------------------------------
+my $nargin = 0;
+my $verbose = 0;
+my ($i,$h,$k,$j);
+my $ntitulo = -1;
+my $nbarra = -1;
+my $nsw = -1;
+my $npv = -1;
+my $npq = -1;
+my $nsh = -1;
+my $nlinha = -1;
+my $narea = -1;
+my $ndglt = -1;
+my $ndgbt = -1;
+my $zona = 0;
+my ($titulo1,@titulo,$ver);
+my $pbas = 100;
+my $freq = 60;
+my $blanks = " " x 80;
+my $formato;
+my @dado;
+my $valor;
+my $tipo_barra;
+my $funcao_barra;
+my (@base,@kzo,@barraidx,@nome_barra,@angbarra,@kvbase,
+    @vbarra,@pger,@pload,@qload,@qmi,@qma,@shur,@shux);
+my (@swidx,@pvidx,@pqidx,@shidx,@grupo_limite,@vmin,@vmax,@grupo_base);
+my (@num_area,@exp_area,@tol_area,@nome_area,@limite);
+my (@fr_barra,@tt_barra,@rest,@reat,@susc,@rateA,@rateS,@phs,@tap,@kt);
+my (@prop,@tapmin,@tapmax,@bctrl,@circ);	    
+my %baseidx;
+
+# -----------------------------------------------------------------------
+# Conferindo os dados de entrada
+# -----------------------------------------------------------------------
+$nargin = @ARGV;
+$nargin || die "Erro: Não há arquivo de rede.\n";
+
+# -----------------------------------------------------------------------
+# Definir nome do arquivo de saida (se necessário)
+# -----------------------------------------------------------------------
+if ($nargin == 1) 
+{
+    $ARGV[1] = $ARGV[0];
+    $ARGV[1] =~ s/^d*_*/d_/;
+    $ARGV[1] =~ s/[^\w\.]/_/g;
+    $ARGV[1] =~ s/\..+$/.m/;
+} 
+elsif ($nargin == 0) 
+{
+    die "Erro: não há arquivo de entrada.\n";
+}
+
+# -----------------------------------------------------------------------
+# Abrindo arquivo de entrada
+# -----------------------------------------------------------------------
+print "Abrindo rede CEPEL \"$ARGV[0]\"...\n";
+carret();
+open(IN,$ARGV[0]) || die "impossível abrir $ARGV[0]: $!\n";
+
+# lendo a rede elétrica
+while (<IN>) 
+{
+    chomp;
+    $_ = $_ . $blanks; 
+
+    if (/^TITU/) 
+    {    
+        $_ = <IN>;
+        chomp;
+        $ntitulo++;
+        $titulo[$ntitulo] = $_;
+    } 
+    elsif (/^DOPC/) 
+    {
+        while (<IN>) 
+        {
+            last if /^9999/;
+            next if /^\(/;
+        }	
+    } 
+    elsif (/^DBAR/) 
+    {
+        while (<IN>) 
+        {
+            chomp;
+            last if /^9999/;
+            next if /^\(/;
+            $nbarra++;
+            $barraidx[$nbarra] = assign($_,1,4,0);
+            $nome_barra[$nbarra] = substr($_,9,12);
+            $nome_barra[$nbarra] =~ s/\'/-/;
+            $kzo[$nbarra] = assign($_,71,72,1);
+            $base[$nbarra] = substr($_,8,1);
+            $baseidx{$barraidx[$nbarra]} = $base[$nbarra];
+            $pload[$nbarra] = assign($_,56,60,0)/$pbas;
+            $qload[$nbarra] = assign($_,61,65,0)/$pbas;
+            $vbarra[$nbarra] = assign($_,23,26,$base[$nbarra])/1000;
+            $angbarra[$nbarra] = 3.14159265358979*assign($_,27,30,0)/180;
+            $shur[$nbarra] = 0;
+            $shux[$nbarra] = assign($_,66,70,0)/$pbas/$vbarra[$nbarra]/$vbarra[$nbarra];
+            $pger[$nbarra] = assign($_,31,35,0)/$pbas;
+            $qmi[$nbarra] = assign($_,41,45,0)/$pbas;
+            $qma[$nbarra] = assign($_,46,50,0)/$pbas;
+            $tipo_barra = assign($_,8,8,0);
+            $limite[$nbarra] = substr($_,21,1);
+            if ($tipo_barra == 2) 
+            {
+                $nsw++;
+                $swidx[$nsw] = $nbarra;
+            } 
+            elsif ($tipo_barra == 1) 
+            {
+                $npv++;
+                $pvidx[$npv] = $nbarra;
+            }
+            else
+            {               
+                $npq++;
+                $pqidx[$npq] = $nbarra;
+            }       
+            if ($shur[$nbarra] != 0 || $shux[$nbarra] != 0) 
+            {
+                $nsh++;
+                $shidx[$nsh] = $nbarra;
+            }       
+        }	
+    } 
+    elsif (/^DLIN/) 
+    {
+        while (<IN>) 
+        {
+            chomp;
+            last if /^9999/;
+            next if /^\(/;
+            $nlinha++;
+            $fr_barra[$nlinha] = assign($_,1,4,0);
+            $tt_barra[$nlinha] = assign($_,9,12,0);
+            $rest[$nlinha] = assign($_,18,23,0)/100;
+            $reat[$nlinha] = assign($_,24,29,0)/100;
+            $susc[$nlinha] = assign($_,30,35,0)/$pbas; 
+            $rateA[$nlinha] = assign($_,61,64,0)/$pbas;
+            $rateS[$nlinha] = assign($_,65,68,0)/$pbas;		
+            $tap[$nlinha] = assign($_,36,40,0);
+            if ($tap[$nlinha] > 0) 
+            {
+                $k = assign($_,56,60,0);
+                if ($k == $fr_barra[$nlinha]) 
+                { 
+                  $tap[$nlinha] = 1/$tap[$nlinha];  
+                } 
+            }
+            $phs[$nlinha] = assign($_,51,55,0);
+            $prop[$nlinha] = substr($_,15,1);
+            $tapmin[$nlinha] = assign($_,42,45,0);
+            $tapmax[$nlinha] = assign($_,46,50,0);
+            $bctrl[$nlinha] = assign($_,57,60,0);
+            $circ[$nlinha] = assign($_,14,14,0);
+    	}	
+    }
+    elsif (/^DGLT/)
+    {
+        while (<IN>)
+        {
+            chomp;
+            last if /^99/;
+            next if /^\(/;
+            $ndglt++;
+            $grupo_limite[$ndglt] = substr($_,1,1);
+            $vmin[$ndglt] = assign($_,4,8,0);
+            $vmax[$ndglt] = assign($_,10,14,0);
+        }
+    }
+    elsif (/^DARE/) 
+    {
+        while (<IN>) 
+        {
+            chomp;
+            last if /^9999/;
+            next if /^\(/;
+            $narea++;
+            $nome_area[$narea] = substr($_,19,36);
+            $num_area[$narea] = assign($_,1,4,0);
+            $exp_area[$narea] = assign($_,9,14,0)/$pbas;
+            $tol_area[$narea] = 0;
+        }	
+    }
+    elsif(/^DGBT/)
+    {
+        while (<IN>)
+        {
+            chomp;
+            last if /^99/;
+            next if /^\(/;
+            $ndgbt++;
+            $grupo_base[$ndgbt] = substr($_,1,1);
+            $kvbase[$ndgbt] = assign($_,4,8,0);           
+        }
+    }
+    elsif (/^FIM/) 
+    {
+        last;
+    }
+}
+
+# -----------------------------------------------------------------------
+# Fechando arquivo
+# -----------------------------------------------------------------------
+close(IN) || die "Impossível fechar $ARGV[0]: $!\n";
+
+# -----------------------------------------------------------------------
+# Abrir arquivo de saída
+# -----------------------------------------------------------------------
+print "Escrevendo arquivo MATLAB \"$ARGV[1]\"...\n";
+carret();
+open(OUT,">$ARGV[1]") || die "Impossível abrir $ARGV[1]: $!\n";
+
+# -----------------------------------------------------------------------
+# Escrevendo arquivo de saída
+# -----------------------------------------------------------------------
+print OUT "% Arquivo MATLAB gerado a partir de uma rede elétrica CEPEL.\n";
+print OUT "% Dados em formato ANAREDE "."$ARGV[0]"."\n";
+for ($i = 0; $i <= $ntitulo; $i++) 
+{ 
+    print OUT "% $titulo[$i]\n"; 
+}
+print OUT "\n";
+
+# -----------------------------------------------------------------------
+# Escrevendo os dados das barras
+# -----------------------------------------------------------------------
+if ($nbarra >= 0) 
+{
+    $formato = "%4d %6.2f %8.5f %8.5f %8.5f %8.5f %2d;\n";
+    print OUT "% Dados das Barras\n";
+    print OUT "% Coluna 1 - Número da barra\n";
+    print OUT "% Coluna 2 - Tensão base (kV)\n";
+    print OUT "% Coluna 3 - Magnitude de tensão inicial (pu)\n";
+    print OUT "% Coluna 4 - Ângulo de tensão inicial (rad)\n";
+    print OUT "% Coluna 5 - Tensão Mínima (pu)\n";
+    print OUT "% Coluna 6 - Tensão Máxima (pu)\n";
+    print OUT "% Coluna 7 - Área\n";
+    print OUT "rede.Barras = [...\n";
+    for ($i = 0; $i <= $nbarra; $i++) 
+    {
+        for ($j = 0; $j <= $ndglt; $j++)
+        {
+            if ($limite[$i] eq $grupo_limite[$j])
+            {
+                for ($k = 0; $k <= $ndgbt; $k++)
+                {
+                    if ($base[$i] eq $grupo_base[$k])
+                    {
+                        printf OUT $formato,$barraidx[$i],$kvbase[$k],
+                        $vbarra[$i],$angbarra[$i],$vmin[$j],$vmax[$j],
+                        $kzo[$i];
+                    }
+                }
+            }
+        }
+    }
+    print OUT "   ];\n\n";
+}
+
+# -----------------------------------------------------------------------
+# Escrevendo os dados das barras Swing
+# -----------------------------------------------------------------------
+if ($nsw >= 0) 
+{
+    $formato = "%4d $pbas %8.5f %8.5f %8.5f %8.5f %8.5f 1];\n\n";
+    print OUT "% Barra Swing\n";
+    print OUT "% Coluna 1 - Número da barra\n";
+    print OUT "% Coluna 2 - Potência base (MVA)\n";
+    print OUT "% Coluna 3 - Magnitude de tensão (pu)\n";
+    print OUT "% Coluna 4 - Ângulo de referência (rad)\n";
+    print OUT "% Coluna 5 - Máxima potência reativa (pu)\n";
+    print OUT "% Coluna 6 - Mínima potência reativa (pu)\n";
+    print OUT "% Coluna 7 - Potência ativa hipotética (pu)\n";
+    print OUT "% Coluna 8 - Conexão (1-ligado/0-desligado)\n";
+    print OUT "rede.SW = [...\n";
+    $h = $swidx[0];
+    printf OUT $formato,$barraidx[$h],$vbarra[$h],$angbarra[$h],
+    $qma[$h],$qmi[$h],$pger[$h];
+}
+
+# -----------------------------------------------------------------------
+# Escrevendo os dados das barras PV
+# -----------------------------------------------------------------------
+if ($npv >= 0) 
+{
+    $formato = "%4d $pbas %8.5f %8.5f %8.5f %8.5f 1;\n";
+    print OUT "% Barra PV\n";
+    print OUT "% Coluna 1 - Número da barra\n";
+    print OUT "% Coluna 2 - Potência base (MVA)\n";
+    print OUT "% Coluna 3 - Potência ativa (pu)\n";
+    print OUT "% Coluna 4 - Magnitude de tensão (pu)\n";
+    print OUT "% Coluna 5 - Máxima potência reativa (pu)\n";
+    print OUT "% Coluna 6 - Mínima potência reativa (pu)\n";
+    print OUT "% Coluna 7 - Conexão (1-ligado/0-desligado)\n";
+    print OUT "rede.PV = [...\n";
+    for ($i = 0; $i <= $npv; $i++) 
+    {
+        $h = $pvidx[$i];
+        printf OUT $formato,$barraidx[$h],$pger[$h],$vbarra[$h],
+        $qma[$h],$qmi[$h];
+    }
+    printf OUT "   ];\n\n";
+}
+
+# -----------------------------------------------------------------------
+# Escrevendo os dados das barras PQ
+# -----------------------------------------------------------------------
+if ($npq >= 0) 
+{
+    $formato = "%4d $pbas %8.5f %8.5f 1;\n";
+    print OUT "% Barra PQ\n";
+    print OUT "% Coluna 1 - Número da barra\n";
+    print OUT "% Coluna 2 - Potência base (MVA)\n";
+    print OUT "% Coluna 3 - Potência ativa (pu)\n";
+    print OUT "% Coluna 4 - Potência reativa (pu)\n";    
+    print OUT "% Coluna 5 - Conexão (1-ligado/0-desligado)\n";    
+    print OUT "rede.PQ = [...\n";
+    for ($i = 0; $i <= $npq; $i++) 
+    {
+        $h = $pqidx[$i];
+        printf OUT $formato,$barraidx[$h],$pload[$h],$qload[$h];
+    }
+    printf OUT "   ];\n\n";
+}
+
+# -----------------------------------------------------------------------
+# Escrevendo os dados Shunt
+# -----------------------------------------------------------------------
+print OUT "% Shunt\n";
+print OUT "% Coluna 1 - Número da barra\n";
+print OUT "% Coluna 2 - Potência base (MVA)\n";
+print OUT "% Coluna 3 - Frequência (Hz)\n";
+print OUT "% Coluna 4 - Condutância (pu)\n";
+print OUT "% Coluna 5 - Susceptância (pu)\n";
+print OUT "% Coluna 6 - Conexão (1-ligado/0-desligado)\n";    
+print OUT "rede.Shunt = [...\n";
+if ($nsh >= 0) 
+{
+    $formato = "%4d $pbas 60 %8.5f %8.5f 1;\n";
+    for ($i = 0; $i <= $nsh; $i++) 
+    {
+        $h = $shidx[$i];
+        printf OUT $formato,$barraidx[$h],$shur[$h],$shux[$h];
+    }    
+}
+else
+{
+    $formato = "0 $pbas 60 0.00000 0.00000 1;\n";
+    print OUT $formato;
+}
+printf OUT "   ];\n\n";
+
+# -----------------------------------------------------------------------
+# Escrevendo os dados das linhas
+# -----------------------------------------------------------------------
+if ($nlinha >= 0) 
+{
+    $formato = "%4d %4d $pbas %6.2f 60 %4d %4d %4d " . 
+	"%8.5f " x 7 . "%8.3f %8.3f 1;\n";
+    print OUT "% Dados das linhas\n";
+    print OUT "% Coluna 1 - Barra de\n";
+    print OUT "% Coluna 2 - Barra para\n";
+    print OUT "% Coluna 3 - Potência base (MVA)\n";
+    print OUT "% Coluna 4 - Tensão base (kV)\n";
+    print OUT "% Coluna 5 - Frequência (Hz)\n";
+    print OUT "% Coluna 6 - Barra proprietária\n";
+    print OUT "% Coluna 7 - Barra controlada\n";
+    print OUT "% Coluna 8 - Circuito\n";
+    print OUT "% Coluna 9 - Resistência (pu)\n";
+    print OUT "% Coluna 10 - Reatância (pu)\n";
+    print OUT "% Coluna 11 - Susceptância (pu)\n";
+    print OUT "% Coluna 12 - Tap do transformador\n";
+    print OUT "% Coluna 13 - Tap mínimo\n";
+    print OUT "% Coluna 14 - Tap máximo\n";
+    print OUT "% Coluna 15 - Defasagem (rad)\n";
+    print OUT "% Coluna 16 - Carregamento máximo (pu)\n";
+    print OUT "% Coluna 17 - Carregamento emergencial (pu)\n";
+    print OUT "% Coluna 18 - Conexão (1-ligado/0-desligado)\n";
+    print OUT "rede.Linhas = [...\n";
+    for ($i = 0; $i <= $nlinha; $i++) 
+    {
+        for ($j = 0; $j <= $ndgbt; $j++)
+        {
+            if ($baseidx{$fr_barra[$i]} eq $grupo_base[$j])
+            {
+                if ($prop[$i] eq "T") 
+                {
+                    $kt[$i] = $tt_barra[$i]; 
+                } 
+                else 
+                {	
+                    $kt[$i] = $fr_barra[$i]; 		
+                }
+                printf OUT $formato,$fr_barra[$i],$tt_barra[$i],
+                $kvbase[$j],$kt[$i],$bctrl[$i],$circ[$i],$rest[$i],
+                $reat[$i],$susc[$i],$tap[$i],$tapmin[$i],$tapmax[$i],
+                $phs[$i],$rateA[$i],$rateS[$i];
+            }
+        }
+    }
+    printf OUT "   ];\n\n";
+}    
+
+# -----------------------------------------------------------------------
+# Escrevendo os dados das áreas
+# -----------------------------------------------------------------------
+if ($narea >= 0) 
+{
+    print OUT "% Dados das áreas\n";
+    print OUT "% Coluna 1 - Número da área\n";
+    print OUT "% Coluna 2 - Barra de referência para a área\n";
+    print OUT "% Coluna 3 - Potência base (MVA)\n";
+    print OUT "% Coluna 4 - Potência exportada (pu)\n";
+    print OUT "% Coluna 5 - Tolerância de intercâmbio (pu)\n";
+    print OUT "% Coluna 6 - Taxa anual de crescimento (pu)\n";
+    print OUT "% Coluna 7 - Potência ativa para intercâmbio (pu)\n";
+    print OUT "% Coluna 8 - Potência reativa para intercâmbio (pu)\n";
+    print OUT "rede.Areas = [...\n";
+    $formato = "%4d %4d $pbas %8.5f %8.5f;\n";    
+    for ($i = 0; $i <= $narea; $i++) 
+    {
+        printf OUT $formato,$num_area[$i],$barraidx[$swidx[0]],
+        $exp_area[$i],$tol_area[$i];
+    }
+    printf OUT "   ];\n\n";
+}
+
+# -----------------------------------------------------------------------
+# Escrevendo os nomes das barras
+# -----------------------------------------------------------------------
+print OUT "% Nomes das barras\n";
+$nbarra >= 0 && print OUT "rede.Nomes = {...\n";
+$h = ($nbarra+1) % 5;
+if ($h == 0) 
+{
+    $h = 5;
+}
+if (($nbarra+1) > 5) 
+{
+    for ($i = 0; $i <= $nbarra-$h; $i+=5) 
+    {
+        print OUT "  '$nome_barra[$i]'; '$nome_barra[$i+1]'; " . 
+            "'$nome_barra[$i+2]'; '$nome_barra[$i+3]'; '$nome_barra[$i+4]';\n";
+    }
+}
+print OUT "  ";
+for ($i = $nbarra-$h+1; $i <= $nbarra-1; $i++) 
+{
+    print OUT "'$nome_barra[$i]'; ";
+}
+print OUT "'$nome_barra[$nbarra]'};\n\n";
+
+# -----------------------------------------------------------------------
+# Fechando arquivo de saída
+# -----------------------------------------------------------------------
+close(OUT) || die "Impossível fechar $ARGV[1]: $!\n";
+print "Conversão completa.\n";
+
+# -----------------------------------------------------------------------
+# Função para formatação dos dados e/ou atribuiçao dos valores default
+# -----------------------------------------------------------------------
+sub assign 
+{
+    my $param;
+    $param = substr($_[0],$_[1]-1,$_[2]-$_[1]+1);
+    $param =~ s/\s*//g;
+    unless ($param) 
+    {
+        $param = "0";
+    }
+    unless ($param =~ /[1-9]/) 
+    {
+        $param = $_[3];
+    }
+    return $param;
+}
+
+# -----------------------------------------------------------------------
+# Função para escrever um separador
+# -----------------------------------------------------------------------
+sub carret 
+{ 
+    $verbose && print "-" x 50 . "\n"; 
+}
+
