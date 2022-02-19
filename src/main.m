@@ -40,9 +40,9 @@ end
 % padrão do MATLAB (.m)
 %--------------------------------------------------------------------------
 disp(' ');
-rede_path = input('Caminho da rede: ','s');
+
 nome_arquivo = input('Nome do arquivo (sem extensão): ','s');
-caminho_arquivo = [rede_path,'/',nome_arquivo,'.pwf'];
+caminho_arquivo = [nome_arquivo,'.pwf'];
 
 % Conversão dos arquivos através de script perl
 perl(conversor,caminho_arquivo);

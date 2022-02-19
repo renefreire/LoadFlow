@@ -1,22 +1,24 @@
 % Função que escreve o relatório da execução do fluxo de potência
 
-function [] = relatorio_FP(flow,param,stat,inj,rede,nome_arquivo)
+function [] = relatorio_FP(flow,param,stat,inj,rede,nome_arquivo,estudo)
 
 relat = ['ANSISPOT_FP_',nome_arquivo,'.txt'];
 rel = fopen(relat,'wt');
 
-fprintf(rel,'UNIVERSIDADE FEDERAL FLUMINENSE - UFF\n');
-fprintf(rel,'Centro Tecnológico - CTC\n');
-fprintf(rel,'Escola de Engenharia\n');
-fprintf(rel,'Programa de Pós-Graduação em Engenharia Elétrica e de Telecomunicações - PPGEET\n');
-fprintf(rel,'\n');
-fprintf(rel,'ANSISPOT - Programa para Análise de Sistemas de Potência\n');
-fprintf(rel,'\n');
 fprintf(rel,'Análise do Fluxo de Potência\n');
-fprintf(rel,'Método de Newton-Raphson\n');
+switch estudo
+    case 1
+        fprintf(rel,'Método de Newton-Raphson Completo\n');
+    case 2
+        fprintf(rel,'Método de Newton-Raphson Desacoplado\n');
+    case 3
+        fprintf(rel,'Método de Newton-Raphson Desacoplado Rápido\n');
+    otherwise
+        error('Escolha inválida');
+end
 fprintf(rel,'\n');
 fprintf(rel,'Autor: Rene Cruz Freire\n');
-fprintf(rel,'Email: renefreire@ig.com.br\n');
+fprintf(rel,'Email: b1.rene.cruz@gmail.com\n');
 fprintf(rel,'\n\n');
 fprintf(rel,'DADOS DA REDE ELÉTRICA\n');
 fprintf(rel,'\n');
