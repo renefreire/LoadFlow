@@ -1,0 +1,61 @@
+% Função que gerencia as operações matemáticas para a resolução do fluxo de
+% potência
+
+function [flow, stat, param, rede, inj] = fluxo(rede,param,nome_arquivo)
+
+disp(' ');
+disp('Análise do Fluxo de Potência')
+disp('Método iterativo de Newton-Raphson');
+
+% Tipos de barra
+% 1 - PQ
+% 2 - PV
+% 3 - Swing
+[inj.tipo] = tipo_barra(rede,param);
+
+% Potência injetada nas barras do sistema de potência
+inj.Pload = zeros(param.nBarras,1); % Potência ativa demandada
+inj.Qload = zeros(param.nBarras,1); % Potência reativa demandada
+inj.Pger = zeros(param.nBarras,1); % Potência ativa gerada
+inj.Qger = zeros(param.nBarras,1); % Potência reativa gerada
+k = 1;
+n = 1;
+for m = 1:param.nBarras
+    if inj.tipo(m) == 1
+        inj.Pload(m) = rede.PQ(k,3);
+        inj.Qload(m) = rede.PQ(k,4);
+        k = k + 1;
+    elseif inj.tipo(m) == 2
+        inj.Pger(m) = rede.PV(n,3);
+        n = n + 1;
+    end
+end
+
+inj.Pesp = inj.Pger - inj.Pload; % Injeção líquida de potência ativa
+inj.Qesp = inj.Qger - inj.Qload; % Injeção líquida de potência reativa 
+
+% Limites de reativos injetados nas barras
+inj.Qmin = -inf(param.nBarras,1);
+inj.Qmax = inf(param.nBarras,1);
+k = 1;
+n = 1;
+for m = 1:param.nBarras
+    if inj.tipo(m) == 2
+        inj.Qmin(m) = rede.PV(k,6);
+        inj.Qmax(m) = rede.PV(k,5);
+        k = k + 1;        
+    elseif inj.tipo(m) == 3
+        inj.Qmin(m) = rede.SW(n,6);
+        inj.Qmax(m) = rede.SW(n,5);
+        n = n + 1;
+    end
+end
+
+% Execução do método de Newton-Raphson
+[stat, param] = newton_raphson(rede,param,inj);
+
+% Cálculo do Fluxo de Potência
+[flow, inj] = fluxo_potencia(param,stat,inj);
+
+% Escrevendo o relatório de execução do programa
+relatorio_FP(flow,param,stat,inj,rede,nome_arquivo);
