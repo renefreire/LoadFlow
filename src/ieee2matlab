@@ -1,0 +1,664 @@
+#!/usr/bin/perl -w
+# converte arquivo de dados IEEE para o formato padrão MATLAB
+
+use strict;
+
+# -----------------------------------------------------------------------
+# Declaração de variáveis
+# -----------------------------------------------------------------------
+my $nargin = 0;
+my $verbose = 0;
+my ($i,$k);
+my $h = 1;
+my $formato;
+my $n = 0;
+my $npv = -1;
+my $nsw = -1;
+my $npq = -1;
+my $nsh = -1;
+my (@idxpv, @idxsw, @idxpq, @idxsh);
+my $pbas = 100;
+my $freq = 60;
+my $blanks = " " x 100;
+my $iter = 20;
+my $toler = 0.0001;
+my $nbarra = -1;
+my $nlinha = -1;
+my $narea = -1; # Zonas no formato MATLAB
+my $nzona = -1; # Areas no formato MATLAB
+my $flag_barra = 0;
+my $flag_linha = 0;
+my $flag_area = 0;
+my $flag_trsf = 0;
+my $flag = 1;
+my $check = 0;
+my $skiplinha = 0;
+my $skipbarra = 0;
+my (@barraidx,@tipo_barra,@nome_barra,@status);
+my (@ein,@ang,@pag,@prg,@qmi,@qma,@psh,@pac);
+my (@prc,@qsh,@kvb,@karea,@kzona);	    
+my %kvbase;
+my (@fr_barra,@to_barra);
+my (@rest,@reat,@susc,@tfas,@tfmi,@tfma,@phsf);
+my (@nbci,@cano,@caem,@sbas,@status_linha);	    
+my (@num_area,@slack_area,@exp_area,@tol_area,@nome_area);
+my (@num_zona,@nome_zona);
+
+# -----------------------------------------------------------------------
+# Conferindo dados de entrada
+# -----------------------------------------------------------------------
+$nargin = @ARGV;
+$nargin || die "Erro: Não há arquivo de entrada.\n";
+my $titulo = 'Dados em formato CDF '.$ARGV[0];
+
+# -----------------------------------------------------------------------
+# Definir nome do arquivo de saída (se necessário)
+# -----------------------------------------------------------------------
+if ($nargin == 1) 
+{
+    $ARGV[1] = $ARGV[0];
+    $ARGV[1] =~ s/^d*_*/d_/;
+    $ARGV[1] =~ s/[^\w\.]/_/g;
+    $ARGV[1] =~ s/\..+$/.m/;
+} 
+elsif ($nargin == 0) 
+{
+    die "Erro: não há arquivo de entrada.\n";
+}
+
+# -----------------------------------------------------------------------
+# Abrir arquivo de entrada
+# -----------------------------------------------------------------------
+print "Abrindo arquivo IEEE \"$ARGV[0]\"...\n";
+carret();
+open(IN,$ARGV[0]) || die "impossível abrir $ARGV[0]: $!\n";
+
+# -----------------------------------------------------------------------
+# Cabeçalho
+# -----------------------------------------------------------------------
+while (<IN>) 
+{
+    if (/^TAPE/) 
+    {      
+        # formato TAPE
+        $verbose && print "arquivo IEEE em formato TAPE";
+    } 
+    elsif (/^CARD/)  
+    { 
+        # CARD data format
+        $verbose && print "arquivo IEEE em formato CARD";
+    } 
+    elsif (/^C/) 
+    {
+        next;
+    } 
+    else 
+    {
+        chomp;
+        $titulo = $_;        
+        last;    
+    }
+}
+
+
+
+# -----------------------------------------------------------------------
+# Encontrando dados de barra
+# -----------------------------------------------------------------------
+$i = 0;
+while (<IN>) 
+{
+    if (/^C/) 
+    {
+        next;
+    }
+    if (/^BUS/) 
+    {
+        last;
+    }
+    $i++;
+    if ($i == 5) 
+    {   
+        die "Não foram encontrados dados de barra.";
+    }
+}
+
+# -----------------------------------------------------------------------
+# Varredura dos dados de barra
+# -----------------------------------------------------------------------
+while (<IN>) 
+{
+    if (/^-999/) 
+    {
+        last;
+    }
+    chomp;
+    $_ = $_ . $blanks;
+    $nbarra++;
+    $tipo_barra[$nbarra] = assign($_,24,2,0);
+    $barraidx[$nbarra]  = assign($_,0,5,1);
+    $ein[$nbarra] = assign($_,27,6,1);
+    $ang[$nbarra] = 3.141592654*assign($_,33,7,0)/180;	    
+    if ($tipo_barra[$nbarra] == 4) 
+    { 
+        $status[$nbarra] = 0;
+    } 
+    else 
+    {
+        $status[$nbarra] = 1;
+    }
+    if ($tipo_barra[$nbarra] == 2) 
+    {
+        $npv++;
+        $idxpv[$npv] = $nbarra;
+        if (assign($_,84,6,0)) 
+        {
+            $ein[$nbarra] = assign($_,84,6,1);
+        }
+    } 
+    elsif ($tipo_barra[$nbarra] == 3) 
+    {
+        $nsw++;
+        $idxsw[$nsw] = $nbarra;
+    }
+    $check = ($tipo_barra[$nbarra] <= 1);
+    $nome_barra[$nbarra] = deblank(substr($_,5,12));
+    $nome_barra[$nbarra] =~ s/\'/\'\'/g;
+    $pag[$nbarra] = assign($_,59,8,0)/$pbas;
+    $prg[$nbarra] = assign($_,67,8,0)/$pbas;
+    $qma[$nbarra] = assign($_,90,8,0)/$pbas;
+    $qmi[$nbarra] = assign($_,98,8,0)/$pbas;
+    $pac[$nbarra] = assign($_,40,9,0)/$pbas;
+    $prc[$nbarra] = assign($_,49,10,0)/$pbas;
+    if (($pac[$nbarra] != 0 || $prc[$nbarra] != 0 || 
+        $check*$pag[$nbarra] != 0 || $check*$prg[$nbarra] != 0) && 
+        $tipo_barra[$nbarra] < 2)
+    {
+        $npq++;
+        $idxpq[$npq] = $nbarra;
+        $pac[$nbarra] -= $check*$pag[$nbarra];
+        $prc[$nbarra] -= $check*$prg[$nbarra];
+    }
+#    elsif (($pac[$nbarra] == 0 && $prc[$nbarra] == 0 && 
+#        $check*$pag[$nbarra] == 0 && $check*$prg[$nbarra] == 0) && 
+#        $tipo_barra[$nbarra] < 2)
+#    {
+#        $npq++;
+#        $idxpq[$npq] = $nbarra;
+#        $pac[$nbarra] -= $check*$pag[$nbarra];
+#        $prc[$nbarra] -= $check*$prg[$nbarra];
+#    }
+    $psh[$nbarra] = assign($_,106,8,0);
+    $qsh[$nbarra] = assign($_,114,8,0); 
+    if ($qsh[$nbarra] != 0 || $psh[$nbarra] != 0) 
+    {
+        $nsh++;
+        $idxsh[$nsh] = $nbarra;
+    }
+    $kvb[$nbarra] = assign($_,76,7,1.00);
+    if ($kvb[$nbarra] == 0) 
+    { 
+        $kvb[$nbarra] = 1; 
+    }
+    $karea[$nbarra] = assign($_,17,3,1);
+    $kzona[$nbarra] = assign($_,20,4,1);
+    $kvbase{$barraidx[$nbarra]} = $kvb[$nbarra];
+    $verbose && printf("Barra %4d:  $nome_barra[$nbarra]\n",$nbarra+1);
+}
+if ($skipbarra) 
+{
+    print "* * By-pass " . $skipbarra . " barra ilhada.\n"; 
+}
+
+# -----------------------------------------------------------------------
+# Encontrando dados dos ramos
+# -----------------------------------------------------------------------
+$i = 0;
+while (<IN>) 
+{
+    if (/^BRANCH/) 
+    {
+        last;
+    }
+    $i++;
+    if ($i == 5) 
+    {
+        die "Nenhum ramo encontrado.";
+    }
+}
+
+# -----------------------------------------------------------------------
+# Varredura dos dados dos ramos
+# -----------------------------------------------------------------------
+while (<IN>) 
+{
+    if (/^-999/) 
+    {
+        last;
+    }
+    chomp;
+    $nlinha++;
+    $status_linha[$nlinha] = openline($_);
+    $_ = $_ . $blanks;
+    $fr_barra[$nlinha] = assign($_,0,5,1);
+    $to_barra[$nlinha] = assign($_,5,5,1);
+    $rest[$nlinha] = assign($_,19,10,0);
+    $reat[$nlinha] = assign($_,29,11,0);	    
+    $susc[$nlinha] = assign($_,40,10,0);
+    $tfas[$nlinha] = assign($_,76,6,1);
+    $tfmi[$nlinha] = assign($_,90,7,1.1);
+    $tfma[$nlinha] = assign($_,97,7,0.9);
+    $phsf[$nlinha] = assign($_,83,7,0);
+    $nbci[$nlinha] = assign($_,105,6,0);
+    $cano[$nlinha] = assign($_,50,5,0)/$pbas;
+    $caem[$nlinha] = assign($_,56,5,0)/$pbas;	    
+    $verbose && printf("Linha encontrada %4d: %4d -> %4d\n",$nlinha+1,$fr_barra[$nlinha],$to_barra[$nlinha]);
+}
+
+# -----------------------------------------------------------------------
+# Varredura nas zonas de perda
+# -----------------------------------------------------------------------
+$_  = <IN>;
+if (/^LOSS/) 
+{
+    while (<IN>) 
+    {
+        if (/^-9/) 
+        {
+            last;
+        }
+        chomp;
+        $_ = $_ . $blanks;
+        $nzona++;
+        $num_zona[$nzona] = assign($_,0,3,1);
+        $nome_zona[$nzona] = deblank(assign($_,4,12,"Area " . $num_zona[$nzona]));
+        $nome_zona[$nzona] =~ s/\'/\'\'/g;
+        $verbose && printf("Área encontrada %4d: %2d\n",$nzona+1,$num_zona[$nzona]);
+    }
+    $_  = <IN>;
+} 
+else 
+{
+    print "Não foram encontradas áreas de perda.";
+}
+
+# -----------------------------------------------------------------------
+# Varredura dos dados de intercâmbio
+# -----------------------------------------------------------------------
+if (/^INTERCHANGE/) 
+{
+    while (<IN>) 
+    {
+        if (/^-9/) 
+        {
+            last;
+        }
+        chomp;
+        $_ = $_ . $blanks;
+        $narea++;
+        $num_area[$narea] = assign($_,0,3,1);
+        $nome_area[$narea] = deblank(assign($_,37,10,"Regiao " . $num_area[$narea]));
+        $nome_area[$narea] =~ s/\'/\'\'/g;
+        $slack_area[$narea] = assign($_,3,5,0);
+        $exp_area[$narea] = assign($_,20,8,0)/$pbas;
+        $tol_area[$narea] = assign($_,29,6,0)/$pbas;
+        $verbose && printf("Região Encontrada %4d: %2d\n",$narea+1,$num_area[$narea]);
+    }
+    $_  = <IN>;
+} 
+else 
+{
+    print "Não foram encontrados dados de intercâmbio.";
+}
+
+# -----------------------------------------------------------------------
+# Varredura de "tie lines"
+# -----------------------------------------------------------------------
+if (/^TIE/) 
+{
+    print "TIE LINES não estão definidas na biblioteca e serão ignoradas.\n";
+    while (<IN>) 
+    {
+	if (/^-9/) 
+    {
+        last;
+    }
+    }
+}
+
+# -----------------------------------------------------------------------
+# Fechando arquivo de entrada
+# -----------------------------------------------------------------------
+close(IN) || die "Impossível fechar $ARGV[0]: $!\n";
+
+# -----------------------------------------------------------------------
+# Abrindo arquivo de saída
+# -----------------------------------------------------------------------
+print "Escrevendo arquivo MATLAB \"$ARGV[1]\"...\n";
+carret();
+open(OUT,">$ARGV[1]") || die "Impossível abrir $ARGV[1]: $!\n";
+
+# -----------------------------------------------------------------------
+# Escrevendo arquivo de saída
+# -----------------------------------------------------------------------
+print OUT "% Arquivo MATLAB gerado a partir de uma rede elétrica IEEE.\n";
+print OUT "% Dados em formato COMMON DATA FILE "."$ARGV[0]"."\n";
+print OUT "\n";
+
+# -----------------------------------------------------------------------
+# Escrevendo dados de barra
+# -----------------------------------------------------------------------
+if ($nbarra >= 0) 
+{
+    print OUT "% Dados das Barras\n";
+    print OUT "% Coluna 1 - Número da barra\n";
+    print OUT "% Coluna 2 - Tensão base (kV)\n";
+    print OUT "% Coluna 3 - Magnitude de tensão inicial (pu)\n";
+    print OUT "% Coluna 4 - Ângulo de tensão inicial (º)\n";
+    print OUT "% Coluna 5 - Área\n";
+    print OUT "% Coluna 6 - Região\n";
+    print OUT "Barras = [ ...\n";
+    $formato = "%4d %7.2f %8.5f %8.5f %2d %2d;\n";
+    for ($i = 0; $i <= $nbarra; $i++) 
+    {
+        printf OUT $formato,$barraidx[$i],$kvb[$i],$ein[$i],$ang[$i],
+        $kzona[$i],$karea[$i];
+    }
+    printf OUT "  ];\n\n";
+}
+
+# -----------------------------------------------------------------------
+# Escrevendo os dados das barras Swing
+# -----------------------------------------------------------------------
+if ($nsw >= 0) 
+{
+    print OUT "% Barra Swing\n";
+    print OUT "% Coluna 1 - Número da barra\n";
+    print OUT "% Coluna 2 - Potência base (MVA)\n";
+    print OUT "% Coluna 3 - Tensão base (kV)\n";
+    print OUT "% Coluna 4 - Magnitude de tensão (pu)\n";
+    print OUT "% Coluna 5 - Ângulo de referência (º)\n";
+    print OUT "% Coluna 6 - Máxima potência reativa (pu)\n";
+    print OUT "% Coluna 7 - Mínima potência reativa (pu)\n";
+    print OUT "% Coluna 8 - Máxima tensão (pu)\n";
+    print OUT "% Coluna 9 - Mínima tensão (pu)\n";
+    print OUT "% Coluna 10 - Potência ativa hipotética (pu)\n";
+    print OUT "% Coluna 11 - Conexão (1-ligado/0-desligado)\n";
+    print OUT "SW = [ ...\n";
+    $formato = "%4d $pbas %6.2f " . "%8.5f " x 4 . "1.1 0.9 %8.5f 1 1 1;\n";
+    for ($i = 0; $i <= $nsw; $i++) 
+    {
+        $h = $idxsw[$i];
+        printf OUT $formato,$barraidx[$h],$kvb[$h],$ein[$h],$ang[$h],
+        $qma[$h],$qmi[$h],$pag[$h];
+    }
+    printf OUT "  ];\n\n";
+}
+
+# -----------------------------------------------------------------------
+# Escrevendo os dados das barras PV
+# -----------------------------------------------------------------------
+if ($npv >= 0) 
+{
+    print OUT "% Barra PV\n";
+    print OUT "% Coluna 1 - Número da barra\n";
+    print OUT "% Coluna 2 - Potência base (MVA)\n";
+    print OUT "% Coluna 3 - Tensão base (kV)\n";
+    print OUT "% Coluna 4 - Potência ativa (pu)\n";
+    print OUT "% Coluna 5 - Magnitude de tensão (pu)\n";
+    print OUT "% Coluna 6 - Máxima potência reativa (pu)\n";
+    print OUT "% Coluna 7 - Mínima potência reativa (pu)\n";
+    print OUT "% Coluna 8 - Máxima tensão (pu)\n";
+    print OUT "% Coluna 9 - Mínima tensão (pu)\n";
+    print OUT "% Coluna 10 - Coeficiente de perdas\n";
+    print OUT "% Coluna 11 - Conexão (1-ligado/0-desligado)\n";
+    print OUT "PV = [ ...\n";
+    $formato = "%4d $pbas %6.2f " . "%8.5f " x 4 . "1.1 0.9 1 %2d;\n";
+    for ($i = 0; $i <= $npv; $i++) 
+    {
+        $h = $idxpv[$i];
+        printf OUT $formato,$barraidx[$h],$kvb[$h],$pag[$h],$ein[$h],
+        $qma[$h],$qmi[$h],$status[$h];
+    }
+    printf OUT "  ];\n\n";
+}
+
+# -----------------------------------------------------------------------
+# Escrevendo os dados das barras PQ
+# -----------------------------------------------------------------------
+if ($npq >= 0) 
+{
+    print OUT "% Barra PQ\n";
+    print OUT "% Coluna 1 - Número da barra\n";
+    print OUT "% Coluna 2 - Potência base (MVA)\n";
+    print OUT "% Coluna 3 - Tensão base (kV)\n";
+    print OUT "% Coluna 4 - Potência ativa (pu)\n";
+    print OUT "% Coluna 5 - Potência reativa (pu)\n";
+    print OUT "% Coluna 6 - Máxima tensão (pu)\n";
+    print OUT "% Coluna 7 - Mínima tensão (pu)\n";
+    print OUT "% Coluna 8 - Conversão de impedância (1-sim/0-não)\n";
+    print OUT "% Coluna 9 - Conexão (1-ligado/0-desligado)\n";    
+    print OUT "PQ = [ ...\n";
+    $formato = "%4d $pbas %6.2f %8.5f %8.5f 1.1 0.9 1 %2d;\n";
+    for ($i = 0; $i <= $npq; $i++) 
+    {
+        $h = $idxpq[$i];
+        printf OUT $formato, $barraidx[$h],$kvb[$h],$pac[$h],$prc[$h],$status[$h];
+    }
+    printf OUT "  ];\n\n";
+}
+
+# -----------------------------------------------------------------------
+# Escrevendo os dados shunt
+# -----------------------------------------------------------------------
+if ($nsh >= 0) 
+{
+    print OUT "% Shunt\n";
+    print OUT "% Coluna 1 - Número da barra\n";
+    print OUT "% Coluna 2 - Potência base (MVA)\n";
+    print OUT "% Coluna 3 - Tensão base (kV)\n";
+    print OUT "% Coluna 4 - Frequência (Hz)\n";
+    print OUT "% Coluna 5 - Condutância (pu)\n";
+    print OUT "% Coluna 6 - Susceptância (pu)\n";
+    print OUT "% Coluna 7 - Conexão (1-ligado/0-desligado)\n";    
+    print OUT "Shunt = [ ...\n";
+    $formato = "%4d $pbas %6.2f 60 %8.5f %8.5f %2d;\n";
+    for ($i = 0; $i <= $nsh; $i++) 
+    {
+        $h = $idxsh[$i];
+        printf OUT $formato, $barraidx[$h],$kvb[$h],$psh[$h],$qsh[$h],$status[$h];
+    }
+    printf OUT "  ];\n\n";
+}
+
+# -----------------------------------------------------------------------
+# Escrevendo os dados das linhas
+# -----------------------------------------------------------------------
+if ($nlinha >= 0) 
+{
+    print OUT "% Dados das linhas\n";
+    print OUT "% Coluna 1 - Barra de\n";
+    print OUT "% Coluna 2 - Barra para\n";
+    print OUT "% Coluna 3 - Potência base (MVA)\n";
+    print OUT "% Coluna 4 - Tensão base (kV)\n";
+    print OUT "% Coluna 5 - Frequência (Hz)\n";
+    print OUT "% Coluna 6 - Comprimento da linha (km)\n";
+    print OUT "% Coluna 7 - Tap de linha\n";
+    print OUT "% Coluna 8 - Resistência (pu)\n";
+    print OUT "% Coluna 9 - Reatância (pu)\n";
+    print OUT "% Coluna 10 - Susceptância (pu)\n";
+    print OUT "% Coluna 11 - Relação de tapes\n";
+    print OUT "% Coluna 12 - Defasagem (º)\n";
+    print OUT "% Coluna 13 - Corrente máxima (pu)\n";
+    print OUT "% Coluna 14 - Máxima potência ativa (pu)\n";
+    print OUT "% Coluna 15 - Máxima potência aparente (pu)\n";
+    print OUT "% Coluna 16 - Conexão (1-ligado/0-desligado)\n";
+    print OUT "Linhas = [ ...\n";
+    $formato = "%4d %4d %7.2f %6.2f 60 0 %8.4f " . "%8.5f " x 5 . "0 %8.3f %8.3f %2d;\n";
+    for ($i = 0; $i <= $nlinha; $i++) 
+    {
+        $k = $kvbase{$fr_barra[$i]}/$kvbase{$to_barra[$i]};
+        if ($k == 1) 
+        {
+            $k = 0;
+        }
+        printf OUT $formato, $fr_barra[$i],$to_barra[$i],$pbas,
+        $kvbase{$fr_barra[$i]},$k,$rest[$i],$reat[$i],$susc[$i],$tfas[$i],
+        $phsf[$i],$cano[$i],$caem[$i],$status_linha[$i];
+    }
+    printf OUT "  ];\n\n";
+}
+
+# -----------------------------------------------------------------------
+# Escrevendo os dados das áreas
+# -----------------------------------------------------------------------
+if ($nzona >= 0) 
+{
+    print OUT "% Dados das áreas\n";
+    print OUT "% Coluna 1 - Número da área\n";
+    print OUT "% Coluna 2 - Barra de referência para a área\n";
+    print OUT "% Coluna 3 - Potência base (MVA)\n";
+    print OUT "% Coluna 4 - Potência exportada (pu)\n";
+    print OUT "% Coluna 5 - Tolerância de intercâmbio (pu)\n";
+    print OUT "% Coluna 6 - Taxa anual de crescimento (pu)\n";
+    print OUT "% Coluna 7 - Potência ativa para intercâmbio (pu)\n";
+    print OUT "% Coluna 8 - Potência reativa para intercâmbio (pu)\n";
+    print OUT "Area = [ ...\n";
+    $formato = "%4d 0 $pbas 0 0 0 0 0;\n";
+    for ($i = 0; $i <= $nzona; $i++) 
+    {
+        printf OUT $formato, $num_zona[$i];
+    }
+    printf OUT "  ];\n\n";    
+}
+
+# -----------------------------------------------------------------------
+# Escrevendo os dados das regiões de intercâmbio
+# -----------------------------------------------------------------------
+if ($narea >= 0) 
+{
+    print OUT "% Dados das regiões\n";
+    print OUT "% Coluna 1 - Número da região\n";
+    print OUT "% Coluna 2 - Barra de referência para a região\n";
+    print OUT "% Coluna 3 - Potência base (MVA)\n";
+    print OUT "% Coluna 4 - Potência exportada (pu)\n";
+    print OUT "% Coluna 5 - Tolerância de intercâmbio (pu)\n";
+    print OUT "% Coluna 6 - Taxa anual de crescimento (pu)\n";
+    print OUT "% Coluna 7 - Potência ativa para intercâmbio (pu)\n";
+    print OUT "% Coluna 8 - Potência reativa para intercâmbio (pu)\n";
+    print OUT "Regiao = [ ...\n";
+    $formato = "%4d %4d $pbas %8.5f %8.5f 0 0 0;\n";
+    for ($i = 0; $i <= $narea; $i++) 
+    {
+        printf OUT $formato, $num_area[$i],$slack_area[$i],
+        $exp_area[$i],$tol_area[$i];
+    }
+    printf OUT "  ];\n\n";    
+}
+
+# -----------------------------------------------------------------------
+# Escrevendo os nomes das barras
+# -----------------------------------------------------------------------
+$nbarra >= 0 && print OUT "NomesB = { ...\n";
+$h = ($nbarra+1) % 5;
+if ($h == 0) 
+{
+    $h = 5;
+}
+if (($nbarra+1) > 5) 
+{
+    for ($i = 0; $i <= $nbarra-$h; $i+=5) 
+    {
+        print OUT "  '$nome_barra[$i]'; '$nome_barra[$i+1]'; " . 
+            "'$nome_barra[$i+2]'; '$nome_barra[$i+3]'; '$nome_barra[$i+4]';\n";
+    }
+}
+print OUT "  ";
+for ($i = $nbarra-$h+1; $i <= $nbarra-1; $i++) 
+{
+    print OUT "'$nome_barra[$i]'; ";
+}
+print OUT "'$nome_barra[$nbarra]'};\n\n";
+
+# -----------------------------------------------------------------------
+# Escrevendo os nomes das áreas
+# -----------------------------------------------------------------------
+$nzona >= 0 && print OUT "NomesA = { ...\n";
+for ($i = 0; $i <= $nzona-1; $i++) 
+{
+    print OUT "  '$nome_zona[$i]';\n";
+}
+$nzona >= 0 && print OUT "  '$nome_zona[$nzona]'};\n\n";
+
+# -----------------------------------------------------------------------
+# Escrevendo os nomes das regiões de intercâmbio
+# -----------------------------------------------------------------------
+$narea >= 0 && print OUT "NomesR = { ...\n";
+for ($i = 0; $i <= $narea-1; $i++) 
+{
+    print OUT "  '$nome_area[$i]';\n";
+}
+$narea >= 0 && print OUT "  '$nome_area[$narea]'};\n\n";
+
+# -----------------------------------------------------------------------
+# Fechando os arquivos de saída
+# -----------------------------------------------------------------------
+close(OUT) || die "Impossível fechar $ARGV[1]: $!\n";
+print "Conversão completa.\n";
+
+# -----------------------------------------------------------------------
+# Função para formatação dos dados e/ou atribuiçao dos valores default
+# -----------------------------------------------------------------------
+sub assign 
+{
+    my $param;
+    $param = substr($_[0],$_[1],$_[2]);
+    $param =~ s/\s+//g;
+    if ($param eq "") 
+    { 
+        $param = $_[3]; 
+    }
+    return $param;
+}
+
+# -----------------------------------------------------------------------
+# Função para determinar se uma linha será aberta
+# -----------------------------------------------------------------------
+sub openline 
+{
+    my @mydados = split /\s+/, $_[0];
+    $_[0] =~ s/\s+$//;
+    if (length($_[0]) > 130) 
+    {
+        if ($mydados[-1] > 1) 
+        {
+            return 1;
+        } 
+        else 
+        {
+            return $mydados[-1];
+        }
+    } 
+    else 
+    {
+        return 1;
+    }
+}
+
+# -----------------------------------------------------------------------
+# Função para formatação dos dados e/ou atribuiçao dos valores default
+# -----------------------------------------------------------------------
+sub deblank 
+{
+    my $nome = $_[0];
+    $nome =~ s/( *)$//;
+    return $nome;
+}
+
+# -----------------------------------------------------------------------
+# Função para escrever um separador
+# -----------------------------------------------------------------------
+sub carret 
+{
+    $verbose && print "-" x 50 . "\n";
+}

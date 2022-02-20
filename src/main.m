@@ -6,6 +6,9 @@
 clc;
 clear;
 
+cd ..;
+currentFolder = pwd;
+
 disp('------------------------------------------------------------------');
 disp('****************************ANSISPOT******************************');
 disp('------------------------------------------------------------------');
@@ -40,9 +43,9 @@ end
 % padrão do MATLAB (.m)
 %--------------------------------------------------------------------------
 disp(' ');
-
 nome_arquivo = input('Nome do arquivo (sem extensão): ','s');
-caminho_arquivo = [nome_arquivo,'.pwf'];
+setenv('PATH','~\LoadFlow');
+caminho_arquivo = [getenv('PATH'),'\casosCEPEL\',nome_arquivo,'.pwf'];
 
 % Conversão dos arquivos através de script perl
 perl(conversor,caminho_arquivo);
