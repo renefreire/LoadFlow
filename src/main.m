@@ -6,8 +6,7 @@
 clc;
 clear;
 
-cd ..;
-currentFolder = pwd;
+path = pwd;
 
 disp('------------------------------------------------------------------');
 disp('****************************ANSISPOT******************************');
@@ -18,21 +17,17 @@ disp('Programa para Análise de Sistemas de Potência em Regime Permanente');
 % Escolha do formato do arquivo do sistema de potência
 %--------------------------------------------------------------------------
 disp(' ');
-disp('Informe o formato do arquivo de rede:');
-disp(' ');
-disp('1 - CEPEL(.pwf)');
-disp('2 - IEEE(.cdf)');
-disp(' ');
-formato = input('Formato escolhido -> ');
-switch formato
-    case 1
+disp('Abra o arquivo de rede na caixa de diálogo a seguir:');
+pause(5);
+nome_arquivo = uigetfile;
+extensao = nome_arquivo(end-3:end);
+switch extensao
+    case '.pwf'
         % Formato CEPEL
         conversor = 'cepel2matlab';
-        extensao = '.pwf';
-    case 2
+    case '.cdf'
         % Formato IEEE
         conversor = 'ieee2matlab';
-        extensao = '.cdf';
     otherwise
         % Mensagem de erro
         error('Escolha inválida. Tente novamente');
@@ -42,10 +37,8 @@ end
 % Inserção do nome do arquivo de rede a ser convertido para o formato 
 % padrão do MATLAB (.m)
 %--------------------------------------------------------------------------
-disp(' ');
-nome_arquivo = input('Nome do arquivo (sem extensão): ','s');
-setenv('PATH','~\LoadFlow');
-caminho_arquivo = [getenv('PATH'),'\casosCEPEL\',nome_arquivo,'.pwf'];
+% Caminho para o arquivo de rede
+caminho_arquivo = [path,'/',nome_arquivo];
 
 % Conversão dos arquivos através de script perl
 perl(conversor,caminho_arquivo);

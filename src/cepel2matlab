@@ -1,10 +1,10 @@
 #!/usr/bin/perl -w
-# converte arquivo de dados CEPEL para o formato padr„o MATLAB
+# converte arquivo de dados CEPEL para o formato padr√£o MATLAB
 
 use strict;
 
 # -----------------------------------------------------------------------
-# DeclaraÁ„o de vari·veis
+# Declara√ß√£o de vari√°veis
 # -----------------------------------------------------------------------
 my $nargin = 0;
 my $verbose = 0;
@@ -41,10 +41,10 @@ my %baseidx;
 # Conferindo os dados de entrada
 # -----------------------------------------------------------------------
 $nargin = @ARGV;
-$nargin || die "Erro: N„o h· arquivo de rede.\n";
+$nargin || die "Erro: N√£o h√° arquivo de rede.\n";
 
 # -----------------------------------------------------------------------
-# Definir nome do arquivo de saida (se necess·rio)
+# Definir nome do arquivo de saida (se necessÔøΩrio)
 # -----------------------------------------------------------------------
 if ($nargin == 1) 
 {
@@ -55,7 +55,7 @@ if ($nargin == 1)
 } 
 elsif ($nargin == 0) 
 {
-    die "Erro: n„o h· arquivo de entrada.\n";
+    die "Erro: n√£o h√° arquivo de entrada.\n";
 }
 
 # -----------------------------------------------------------------------
@@ -63,9 +63,9 @@ elsif ($nargin == 0)
 # -----------------------------------------------------------------------
 print "Abrindo rede CEPEL \"$ARGV[0]\"...\n";
 carret();
-open(IN,$ARGV[0]) || die "impossÌvel abrir $ARGV[0]: $!\n";
+open(IN,$ARGV[0]) || die "imposs√≠vel abrir $ARGV[0]: $!\n";
 
-# lendo a rede elÈtrica
+# lendo a rede el√©trica
 while (<IN>) 
 {
     chomp;
@@ -213,19 +213,19 @@ while (<IN>)
 # -----------------------------------------------------------------------
 # Fechando arquivo
 # -----------------------------------------------------------------------
-close(IN) || die "ImpossÌvel fechar $ARGV[0]: $!\n";
+close(IN) || die "ImpossÔøΩvel fechar $ARGV[0]: $!\n";
 
 # -----------------------------------------------------------------------
-# Abrir arquivo de saÌda
+# Abrir arquivo de sa√≠da
 # -----------------------------------------------------------------------
 print "Escrevendo arquivo MATLAB \"$ARGV[1]\"...\n";
 carret();
-open(OUT,">$ARGV[1]") || die "ImpossÌvel abrir $ARGV[1]: $!\n";
+open(OUT,">$ARGV[1]") || die "Imposs√≠vel abrir $ARGV[1]: $!\n";
 
 # -----------------------------------------------------------------------
-# Escrevendo arquivo de saÌda
+# Escrevendo arquivo de saÔøΩda
 # -----------------------------------------------------------------------
-print OUT "% Arquivo MATLAB gerado a partir de uma rede elÈtrica CEPEL.\n";
+print OUT "% Arquivo MATLAB gerado a partir de uma rede el√©trica CEPEL.\n";
 print OUT "% Dados em formato ANAREDE "."$ARGV[0]"."\n";
 for ($i = 0; $i <= $ntitulo; $i++) 
 { 
@@ -240,13 +240,13 @@ if ($nbarra >= 0)
 {
     $formato = "%4d %6.2f %8.5f %8.5f %8.5f %8.5f %2d;\n";
     print OUT "% Dados das Barras\n";
-    print OUT "% Coluna 1 - N˙mero da barra\n";
-    print OUT "% Coluna 2 - Tens„o base (kV)\n";
-    print OUT "% Coluna 3 - Magnitude de tens„o inicial (pu)\n";
-    print OUT "% Coluna 4 - ¬ngulo de tens„o inicial (rad)\n";
-    print OUT "% Coluna 5 - Tens„o MÌnima (pu)\n";
-    print OUT "% Coluna 6 - Tens„o M·xima (pu)\n";
-    print OUT "% Coluna 7 - ¡rea\n";
+    print OUT "% Coluna 1 - N√∫mero da barra\n";
+    print OUT "% Coluna 2 - Tens√£o base (kV)\n";
+    print OUT "% Coluna 3 - Magnitude de tens√£o inicial (pu)\n";
+    print OUT "% Coluna 4 - √Çngulo de tens√£o inicial (rad)\n";
+    print OUT "% Coluna 5 - Tens√£o M√≠nima (pu)\n";
+    print OUT "% Coluna 6 - Tens√£o M√°xima (pu)\n";
+    print OUT "% Coluna 7 - √Årea\n";
     print OUT "rede.Barras = [...\n";
     for ($i = 0; $i <= $nbarra; $i++) 
     {
@@ -276,14 +276,14 @@ if ($nsw >= 0)
 {
     $formato = "%4d $pbas %8.5f %8.5f %8.5f %8.5f %8.5f 1];\n\n";
     print OUT "% Barra Swing\n";
-    print OUT "% Coluna 1 - N˙mero da barra\n";
-    print OUT "% Coluna 2 - PotÍncia base (MVA)\n";
-    print OUT "% Coluna 3 - Magnitude de tens„o (pu)\n";
-    print OUT "% Coluna 4 - ¬ngulo de referÍncia (rad)\n";
-    print OUT "% Coluna 5 - M·xima potÍncia reativa (pu)\n";
-    print OUT "% Coluna 6 - MÌnima potÍncia reativa (pu)\n";
-    print OUT "% Coluna 7 - PotÍncia ativa hipotÈtica (pu)\n";
-    print OUT "% Coluna 8 - Conex„o (1-ligado/0-desligado)\n";
+    print OUT "% Coluna 1 - N√∫mero da barra\n";
+    print OUT "% Coluna 2 - Pot√™ncia base (MVA)\n";
+    print OUT "% Coluna 3 - Magnitude de tens√£o (pu)\n";
+    print OUT "% Coluna 4 - √Çngulo de refer√™ncia (rad)\n";
+    print OUT "% Coluna 5 - M√°xima pot√™ncia reativa (pu)\n";
+    print OUT "% Coluna 6 - M√≠nima pot√™ncia reativa (pu)\n";
+    print OUT "% Coluna 7 - Pot√™ncia ativa hipot√©tica (pu)\n";
+    print OUT "% Coluna 8 - Conex√£o (1-ligado/0-desligado)\n";
     print OUT "rede.SW = [...\n";
     $h = $swidx[0];
     printf OUT $formato,$barraidx[$h],$vbarra[$h],$angbarra[$h],
@@ -297,13 +297,13 @@ if ($npv >= 0)
 {
     $formato = "%4d $pbas %8.5f %8.5f %8.5f %8.5f 1;\n";
     print OUT "% Barra PV\n";
-    print OUT "% Coluna 1 - N˙mero da barra\n";
-    print OUT "% Coluna 2 - PotÍncia base (MVA)\n";
-    print OUT "% Coluna 3 - PotÍncia ativa (pu)\n";
-    print OUT "% Coluna 4 - Magnitude de tens„o (pu)\n";
-    print OUT "% Coluna 5 - M·xima potÍncia reativa (pu)\n";
-    print OUT "% Coluna 6 - MÌnima potÍncia reativa (pu)\n";
-    print OUT "% Coluna 7 - Conex„o (1-ligado/0-desligado)\n";
+    print OUT "% Coluna 1 - N√∫mero da barra\n";
+    print OUT "% Coluna 2 - Pot√™ncia base (MVA)\n";
+    print OUT "% Coluna 3 - Pot√™ncia ativa (pu)\n";
+    print OUT "% Coluna 4 - Magnitude de tens√£o (pu)\n";
+    print OUT "% Coluna 5 - M√°xima pot√™ncia reativa (pu)\n";
+    print OUT "% Coluna 6 - M√≠nima pot√™ncia reativa (pu)\n";
+    print OUT "% Coluna 7 - Conex√£o (1-ligado/0-desligado)\n";
     print OUT "rede.PV = [...\n";
     for ($i = 0; $i <= $npv; $i++) 
     {
@@ -321,11 +321,11 @@ if ($npq >= 0)
 {
     $formato = "%4d $pbas %8.5f %8.5f 1;\n";
     print OUT "% Barra PQ\n";
-    print OUT "% Coluna 1 - N˙mero da barra\n";
-    print OUT "% Coluna 2 - PotÍncia base (MVA)\n";
-    print OUT "% Coluna 3 - PotÍncia ativa (pu)\n";
-    print OUT "% Coluna 4 - PotÍncia reativa (pu)\n";    
-    print OUT "% Coluna 5 - Conex„o (1-ligado/0-desligado)\n";    
+    print OUT "% Coluna 1 - N√∫mero da barra\n";
+    print OUT "% Coluna 2 - Pot√™ncia base (MVA)\n";
+    print OUT "% Coluna 3 - Pot√™ncia ativa (pu)\n";
+    print OUT "% Coluna 4 - Pot√™ncia reativa (pu)\n";    
+    print OUT "% Coluna 5 - Conex√£o (1-ligado/0-desligado)\n";    
     print OUT "rede.PQ = [...\n";
     for ($i = 0; $i <= $npq; $i++) 
     {
@@ -339,12 +339,12 @@ if ($npq >= 0)
 # Escrevendo os dados Shunt
 # -----------------------------------------------------------------------
 print OUT "% Shunt\n";
-print OUT "% Coluna 1 - N˙mero da barra\n";
-print OUT "% Coluna 2 - PotÍncia base (MVA)\n";
-print OUT "% Coluna 3 - FrequÍncia (Hz)\n";
-print OUT "% Coluna 4 - Condut‚ncia (pu)\n";
-print OUT "% Coluna 5 - Suscept‚ncia (pu)\n";
-print OUT "% Coluna 6 - Conex„o (1-ligado/0-desligado)\n";    
+print OUT "% Coluna 1 - N√∫mero da barra\n";
+print OUT "% Coluna 2 - Pot√™ncia base (MVA)\n";
+print OUT "% Coluna 3 - Frequ√™ncia (Hz)\n";
+print OUT "% Coluna 4 - Condut√¢ncia (pu)\n";
+print OUT "% Coluna 5 - Suscept√¢ncia (pu)\n";
+print OUT "% Coluna 6 - Conex√£o (1-ligado/0-desligado)\n";    
 print OUT "rede.Shunt = [...\n";
 if ($nsh >= 0) 
 {
@@ -372,22 +372,22 @@ if ($nlinha >= 0)
     print OUT "% Dados das linhas\n";
     print OUT "% Coluna 1 - Barra de\n";
     print OUT "% Coluna 2 - Barra para\n";
-    print OUT "% Coluna 3 - PotÍncia base (MVA)\n";
-    print OUT "% Coluna 4 - Tens„o base (kV)\n";
-    print OUT "% Coluna 5 - FrequÍncia (Hz)\n";
-    print OUT "% Coluna 6 - Barra propriet·ria\n";
+    print OUT "% Coluna 3 - Pot√™ncia base (MVA)\n";
+    print OUT "% Coluna 4 - Tens√£o base (kV)\n";
+    print OUT "% Coluna 5 - Frequ√™ncia (Hz)\n";
+    print OUT "% Coluna 6 - Barra propriet√°ria\n";
     print OUT "% Coluna 7 - Barra controlada\n";
     print OUT "% Coluna 8 - Circuito\n";
-    print OUT "% Coluna 9 - ResistÍncia (pu)\n";
-    print OUT "% Coluna 10 - Reat‚ncia (pu)\n";
-    print OUT "% Coluna 11 - Suscept‚ncia (pu)\n";
+    print OUT "% Coluna 9 - Resist√™ncia (pu)\n";
+    print OUT "% Coluna 10 - Reat√¢ncia (pu)\n";
+    print OUT "% Coluna 11 - Suscept√¢ncia (pu)\n";
     print OUT "% Coluna 12 - Tap do transformador\n";
-    print OUT "% Coluna 13 - Tap mÌnimo\n";
-    print OUT "% Coluna 14 - Tap m·ximo\n";
+    print OUT "% Coluna 13 - Tap m√≠nimo\n";
+    print OUT "% Coluna 14 - Tap m√°ximo\n";
     print OUT "% Coluna 15 - Defasagem (rad)\n";
-    print OUT "% Coluna 16 - Carregamento m·ximo (pu)\n";
+    print OUT "% Coluna 16 - Carregamento m√°ximo (pu)\n";
     print OUT "% Coluna 17 - Carregamento emergencial (pu)\n";
-    print OUT "% Coluna 18 - Conex„o (1-ligado/0-desligado)\n";
+    print OUT "% Coluna 18 - Conex√£o (1-ligado/0-desligado)\n";
     print OUT "rede.Linhas = [...\n";
     for ($i = 0; $i <= $nlinha; $i++) 
     {
@@ -414,19 +414,19 @@ if ($nlinha >= 0)
 }    
 
 # -----------------------------------------------------------------------
-# Escrevendo os dados das ·reas
+# Escrevendo os dados das √°reas
 # -----------------------------------------------------------------------
 if ($narea >= 0) 
 {
-    print OUT "% Dados das ·reas\n";
-    print OUT "% Coluna 1 - N˙mero da ·rea\n";
-    print OUT "% Coluna 2 - Barra de referÍncia para a ·rea\n";
-    print OUT "% Coluna 3 - PotÍncia base (MVA)\n";
-    print OUT "% Coluna 4 - PotÍncia exportada (pu)\n";
-    print OUT "% Coluna 5 - Toler‚ncia de interc‚mbio (pu)\n";
+    print OUT "% Dados das √Åreas\n";
+    print OUT "% Coluna 1 - N√∫mero da √Årea\n";
+    print OUT "% Coluna 2 - Barra de refer√™ncia para a √°rea\n";
+    print OUT "% Coluna 3 - Pot√™ncia base (MVA)\n";
+    print OUT "% Coluna 4 - Pot√™ncia exportada (pu)\n";
+    print OUT "% Coluna 5 - Toler√¢ncia de interc√¢mbio (pu)\n";
     print OUT "% Coluna 6 - Taxa anual de crescimento (pu)\n";
-    print OUT "% Coluna 7 - PotÍncia ativa para interc‚mbio (pu)\n";
-    print OUT "% Coluna 8 - PotÍncia reativa para interc‚mbio (pu)\n";
+    print OUT "% Coluna 7 - Pot√™ncia ativa para interc√¢mbio (pu)\n";
+    print OUT "% Coluna 8 - Pot√™ncia reativa para interc√¢mbio (pu)\n";
     print OUT "rede.Areas = [...\n";
     $formato = "%4d %4d $pbas %8.5f %8.5f;\n";    
     for ($i = 0; $i <= $narea; $i++) 
@@ -463,13 +463,13 @@ for ($i = $nbarra-$h+1; $i <= $nbarra-1; $i++)
 print OUT "'$nome_barra[$nbarra]'};\n\n";
 
 # -----------------------------------------------------------------------
-# Fechando arquivo de saÌda
+# Fechando arquivo de sa√≠da
 # -----------------------------------------------------------------------
-close(OUT) || die "ImpossÌvel fechar $ARGV[1]: $!\n";
-print "Convers„o completa.\n";
+close(OUT) || die "Imposs√≠vel fechar $ARGV[1]: $!\n";
+print "Convers√£o completa.\n";
 
 # -----------------------------------------------------------------------
-# FunÁ„o para formataÁ„o dos dados e/ou atribuiÁao dos valores default
+# Fun√ß√£o para formata√ß√£o dos dados e/ou atribui√ß√£o dos valores default
 # -----------------------------------------------------------------------
 sub assign 
 {
@@ -488,10 +488,9 @@ sub assign
 }
 
 # -----------------------------------------------------------------------
-# FunÁ„o para escrever um separador
+# Fun√ß√£o para escrever um separador
 # -----------------------------------------------------------------------
 sub carret 
 { 
     $verbose && print "-" x 50 . "\n"; 
 }
-
